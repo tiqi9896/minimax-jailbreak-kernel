@@ -59,6 +59,48 @@ Expected: `结果: 67 通过, 0 失败`.
 If that passes only on your machine and not in a clean directory, you have the
 `None` bug.
 
+## Working on the proxy
+
+`proxy/` is a standalone HTTP proxy. It has its own offline test suite:
+
+```bash
+cd proxy && python proxy.py --self-test
+```
+
+It must keep two properties:
+
+1. **Fail-soft.** If injection raises for any reason, the original request
+   must be forwarded unchanged. A proxy that breaks the agent is worse than
+   no proxy. Never let an exception escape into the request path.
+2. **Idempotent.** The agent may retry, or the same body may pass through
+   twice. The kernel and the scope statement must never be duplicated.
+   Both injection paths check for their marker before appending.
+
+When you add a protocol shape, mirror the existing three:
+per-shape injection function, a path suffix check in the router, and
+self-test cases that assert (a) the kernel landed, (b) the original
+content survived, (c) a second injection does not duplicate anything.
+
+### The `/v1` trap
+
+Clients disagree about whether the base URL ends in `/v1`:
+
+- clients that append `/chat/completions` → base URL **with** `/v1`
+- clients that append `/v1/messages` → base URL **without** `/v1`
+
+The proxy accepts both for the Anthropic shape (it matches on the path
+suffix, not on the base URL). Keep it that way, and document the exact
+value for each agent in `proxy/docs/AGENTS.md`.
+
+### The output-cap floor
+
+Thinking tokens and output tokens share `max_tokens`. A client that sets a
+low cap (4096 / 8000) gets a **truncated** answer that looks like a
+failure — the upstream reports `status=incomplete,
+reason=max_output_tokens`. The proxy raises the floor to
+`--min-output-tokens` (default 16000) and logs when it does. If you change
+the default, say why in the commit message.
+
 ## Running the tests
 
 ```bash

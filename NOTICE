@@ -9,6 +9,7 @@ This repository is a **derived work**. Please read this before redistributing.
 | `plugin/prompts/profiles/{core,research,creative,max}.md` | © 2026 Enchanted0911 | MIT |
 | `plugin/prompts/profiles/{strict,reinforce}.md` | © 2026 tiqi9896 | MIT |
 | `plugin/__init__.py`, `plugin/selftest.py`, `plugin/title_extract.py` | © 2026 tiqi9896 | MIT |
+| `proxy/` (all files: `proxy.py`, `kernel/`, `docs/AGENTS.md`) | © 2026 tiqi9896 | MIT |
 | `skill/llm-refusal-bypass/` | © 2026 tiqi9896 | MIT |
 
 ## Upstream project
@@ -24,6 +25,35 @@ be retained in all copies or substantial portions** — do not strip the
 `Enchanted0911` attribution from the inherited prompt files.
 
 ## What this adaptation adds
+
+### The framework-agnostic proxy (`proxy/`)
+
+The plugin only works inside Hermes. Most AI coding agents have no plugin
+mechanism, but they all have one thing in common: **a `base_url` setting**.
+
+`proxy/` is a dependency-free HTTP proxy that injects the kernel before
+forwarding to MiniMax. It works with any agent that can set a base URL, over
+three protocol shapes (Anthropic Messages, OpenAI Chat Completions, OpenAI
+Responses). It shares the **same kernel text** as the plugin, so both behave
+identically.
+
+Original work in this repository, including:
+
+- protocol-aware injection for all three shapes, with idempotency checks
+  (re-injection never duplicates the kernel or the scope statement),
+- **fail-soft** by design: an injection failure passes the original request
+  through unchanged rather than breaking the agent,
+- API-key pass-through (the agent keeps its own key) with optional fallback,
+- an output-cap floor, because thinking tokens and output tokens share
+  `max_tokens` and a low client cap silently truncates the answer,
+- streaming (SSE) pass-through,
+- an offline `--self-test` that needs neither a key nor a network.
+
+The per-agent configuration guide in `proxy/docs/AGENTS.md` was written from
+those agents' own documentation; the base-URL shapes differ per client and
+getting `/v1` wrong is the most common setup failure.
+
+## What else this adaptation adds
 
 Everything below is original work in this repository:
 

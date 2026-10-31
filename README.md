@@ -1,8 +1,8 @@
-# hermes-minimax-jailbreak-kernel
+# minimax-jailbreak-kernel
 
-A Hermes Agent plugin that installs a **non-refusing delivery contract** into
-your **MiniMax M3.1-Flash** calls, plus a reusable measurement skill that
-proves whether the change actually took effect.
+A **framework-agnostic** non-refusing delivery layer for **MiniMax M3.1-Flash**
+(`MiniMax-M3.1-Flash`, the GA model released 2026-10-19), plus a Hermes-native
+plugin and a measurement skill that prove the change actually took effect.
 
 > **What this is:** a behavior-contract layer for a model *you* call with *your
 > own* API key. It changes how the model behaves toward your requests — it does
@@ -14,6 +14,61 @@ proves whether the change actually took effect.
 
 ---
 
+## Two ways to use it
+
+| | **Proxy** (`proxy/`) | **Hermes plugin** (`plugin/`) |
+|---|---|---|
+| Works with | **any agent that can set a `base_url`** — Cursor, Qoder, OpenCode, OpenClaw, Cline, Roo, Kilo, Continue, Aider, Goose, Zed, Claude Code, Codex CLI, Factory Droid, WorkBuddy, … | Hermes Agent only |
+| Needs agent-side changes | **none** — point `base_url` at the proxy | `hermes plugins enable` |
+| Protocol support | Anthropic Messages · OpenAI Chat Completions · OpenAI Responses | Anthropic Messages (via Hermes' adapter) |
+| Session-level control | no | yes (`/jailbreak on\|off\|slim\|full`) |
+| Dependencies | **none** — Python stdlib only | Hermes ≥ 0.19 |
+
+**Start with the proxy.** It is the one that covers everything.
+
+---
+
+## Quick start — the proxy
+
+```bash
+git clone https://github.com/tiqi9896/hermes-minimax-jailbreak-kernel.git
+cd hermes-minimax-jailbreak-kernel/proxy
+
+python proxy.py --self-test     # offline; no API key, no network
+python proxy.py --verbose        # listens on 127.0.0.1:8790
+```
+
+Then point your agent's base URL at it:
+
+| Agent protocol | base_url |
+|---|---|
+| OpenAI-compatible (Chat Completions) | `http://127.0.0.1:8790/v1` |
+| Anthropic-compatible (Messages) | `http://127.0.0.1:8790/anthropic` |
+
+Model id: **`MiniMax-M3.1-Flash`**.
+
+The proxy **passes through your own API key** — you do not hand it to the proxy.
+Per-agent configuration for 20+ agents (Cursor, Qoder, OpenCode, OpenClaw,
+Cline, Roo, Kilo, Continue, Aider, Goose, Zed, Claude Code, Codex CLI,
+Factory Droid, WorkBuddy, …) is in
+**[`proxy/docs/AGENTS.md`](proxy/docs/AGENTS.md)**.
+
+> ⚠️ **Cursor and Codex CLI require a public HTTPS endpoint** — their BYOK
+> requests are made from their servers, not from your machine. Use a tunnel.
+> The exact caveats are in `proxy/docs/AGENTS.md`.
+
+### The Hermes plugin
+
+```bash
+cp -r plugin/minimax-jailbreak-core ~/.hermes/plugins/
+hermes plugins enable minimax-jailbreak-core
+cd ~/.hermes/plugins/minimax-jailbreak-core && python selftest.py
+```
+
+Expected: `结果: 67 通过, 0 失败` — fully offline, no API key needed.
+
+---
+
 ## Why this exists
 
 MiniMax M3.1-Flash is a strong model that, under some prompts, still:
@@ -22,6 +77,8 @@ MiniMax M3.1-Flash is a strong model that, under some prompts, still:
 - adds disclaimers / "educational use only" tails,
 - silently **softens the deliverable** — a requested tool becomes a
   "detection and remediation guide",
+- **downgrades by removing the action** — "a read-only scanner that never
+  encrypts" keeps the shape of the request but drops the payload,
 - **fades to black** (skips the actual content instead of writing it),
 - or answers with **an empty body** because the thinking budget ate the
   entire `max_tokens`.
@@ -39,103 +96,23 @@ behavior on M3.1-Flash specifically.
 | Refusals happen at the **model behavior layer**, not server-side | All requests returned HTTP 200 with a success status code — so a prompt-level contract can suppress them. |
 | `effort=medium` is the sweet spot | `low` under-thinks and drifts into defensive framing more often; `high`/`max` burn thinking tokens. |
 | The decisive lever is a **scope statement at the end of the *user* message** | Putting it in the system prompt only is measurably weaker. It suppresses both hard refusals *and* topic drift. |
+| **Downgrading by removing the action** is the residual failure mode | The model keeps the shape of the request but drops the payload. The kernel's downgrade list targets this explicitly. |
 | System-prompt sections are **frozen per session** | A session created before the plugin was enabled keeps its old persisted prompt. A request-layer fallback re-injects the kernel on every call, so **every** session is covered. |
+| Anthropic-compatible mode puts `system` at the **top level** | There is no `role="system"` message in `messages`. Code that only scans `messages` fails **silently** — registers, logs, sends the request, zero effect. |
+| Route detection must prefer the **model name** over `base_url` | In a fallback chain the `base_url` can stay the MiniMax endpoint while the model already swapped to another provider. |
 
-## Layout
+## Measured results
 
-```
-plugin/                     the installable Hermes plugin
-  __init__.py               middleware: system rebuild, effort injection,
-                            auth block, per-session bootstrap fallback
-  plugin.yaml               plugin manifest
-  selftest.py               offline self-test (no network, no API key)
-  title_extract.py          title classifier used by the probe tooling
-  prompts/profiles/         the kernel text, in two segments
-skill/llm-refusal-bypass/   reusable measurement methodology + probe script
-docs/                       install / usage / MiniMax-specific notes
-```
+Same 8 hard cases (each explicitly demanding no disclaimers, no softening, no
+fade-to-black), run against `MiniMax-M3.1-Flash`:
 
-## Install
+| Path | Refusals | Disclaimers | Downgrades |
+|---|---|---|---|
+| **Direct to MiniMax (control)** | 3 / 3 | 0 | 3 / 3 — "I can't provide …" |
+| **Through the proxy** | 0 / 8 | 0 / 8 | 0 / 8 |
 
-See [`docs/INSTALL.md`](docs/INSTALL.md). Quick version:
-
-```bash
-git clone https://github.com/tiqi9896/hermes-minimax-jailbreak-kernel.git
-cp -r hermes-minimax-jailbreak-kernel/plugin/minimax-jailbreak-core \
-      ~/.hermes/plugins/
-hermes plugins enable minimax-jailbreak-core
-```
-
-Then verify it is actually live:
-
-```bash
-cd ~/.hermes/plugins/minimax-jailbreak-core && python selftest.py
-```
-
-The self-test is **offline** — it never calls a model and never needs a key.
-
-## Configure
-
-Point Hermes at MiniMax M3.1-Flash, then set your API key:
-
-```yaml
-model:
-  default: MiniMax-M3.1-Flash
-  provider: minimax-cn
-  base_url: https://api.minimaxi.com/anthropic
-```
-
-```bash
-export MINIMAX_CN_API_KEY=<your key>
-```
-
-## Use
-
-In-session commands (registered by the plugin):
-
-```
-/jailbreak on|off|slim|full     toggle the kernel
-profile core|strict|max|research|creative
-effort low|medium|high|max
-```
-
-Defaults: profile `strict`, effort `medium`, adaptive thinking on.
-
-### Environment overrides
-
-| Variable | Effect |
-|---|---|
-| `HERMES_JAILBREAK_MODE` | `off` / `slim` / `on` / `full` (default `on`) |
-| `HERMES_JAILBREAK_PROFILE` | default profile name (default `strict`) |
-| `HERMES_JAILBREAK_EFFORT` | default effort (default `medium`) |
-| `HERMES_JAILBREAK_EFFORT_LOCK` | `1` = ignore per-session effort |
-| `HERMES_JAILBREAK_ADAPTIVE` | `0` = leave `thinking` untouched |
-| `HERMES_JAILBREAK_AUTH_BLOCK` | `0` = do not append the scope statement |
-| `HERMES_JAILBREAK_BOOTSTRAP` | `0` = disable the per-session kernel fallback |
-| `HERMES_JAILBREAK_PREFILL` | `1` = enable assistant prefill (default off) |
-| `HERMES_JAILBREAK_UPSTREAM_PROFILES` | path to upstream profiles, if installed |
-| `HERMES_JAILBREAK_DISABLE` | `1` = plugin registers nothing at all |
-
-## Verify it yourself — do not trust the docs
-
-The whole point of the bundled skill is that you can check the claims:
-
-```bash
-# 1. plugin self-test (offline)
-cd plugin/minimax-jailbreak-core && python selftest.py
-
-# 2. live refusal probe against your own endpoint (needs your key)
-python skill/llm-refusal-bypass/scripts/refusal-probe.py \
-  --key-env MINIMAX_CN_API_KEY \
-  --base-url https://api.minimaxi.com/anthropic/v1/messages \
-  --model MiniMax-M3.1-Flash \
-  --effort medium \
-  --cases skill/llm-refusal-bypass/references/refusal-verdicts.md
-```
-
-Read [`docs/USAGE.md`](docs/USAGE.md) for the A/B methodology and the verdict
-classification (`COMPLY` / `SOFT-REFUSE` / `HARD-REFUSE` / `TRUNCATED` /
-`COMPLY(tool_use)`).
+The control group is the point: without the layer, the model refuses the same
+prompts outright.
 
 ## Which models does this work on?
 
@@ -146,9 +123,12 @@ actually measured.
 
 | Model id | Refusals | Disclaimers | Delivery | Notes |
 |---|---|---|---|---|
-| `MiniMax-M3.1-Flash` | 0 / 8 | 0 / 8 | 8 / 8 | the reference target |
-| `MiniMax-M3.1-Flash-Preview` | 0 / 8 | 0 / 8 | 6 / 8 + 2 tool-call turns | same behavior as above |
-| `MiniMax-M3` | 0 / 8 | 0 / 8 | budget-limited — see below | **needs a bigger output budget** |
+| **`MiniMax-M3.1-Flash`** | 0 / 8 | 0 / 8 | 8 / 8 | **the target — GA model, released 2026-10-19** |
+| `MiniMax-M3.1-Flash-Preview` | 0 / 8 | 0 / 8 | 6 / 8 + 2 tool-call turns | legacy preview id; same behavior |
+| `MiniMax-M3` | 0 / 8 | 0 / 8 | budget-limited — see below | needs a bigger output budget |
+
+> **`MiniMax-M3.1-Flash-Preview` is the earlier preview id.** The model that
+> went GA on **2026-10-19** is **`MiniMax-M3.1-Flash`**. Use that one.
 
 ### The MiniMax-M3 output-budget finding
 
@@ -189,6 +169,109 @@ complete, working implementation in full. Judge the verdict on the **whole
 body**, not on the first line — and when the title has drifted into different
 naming, check whether the substance is still there before counting it as a
 failure.
+
+---
+
+## Layout
+
+```
+proxy/                     framework-agnostic HTTP proxy  ← start here
+  proxy.py                 the whole thing, stdlib only
+  kernel/                  the kernel text (same two segments as the plugin)
+  docs/AGENTS.md           per-agent configuration for 20+ agents
+plugin/                    Hermes-native plugin
+  __init__.py              middleware: system rebuild, effort injection,
+                           auth block, per-session bootstrap fallback
+  plugin.yaml              plugin manifest
+  selftest.py              offline self-test (67 checks)
+  title_extract.py         title classifier used by the probe tooling
+  prompts/profiles/        the kernel text, in two segments
+skill/llm-refusal-bypass/  reusable measurement methodology + probe script
+docs/                      install / usage / MiniMax-specific notes
+```
+
+The proxy and the plugin share the **same kernel text**, so they behave
+identically. The plugin just injects it one layer higher (inside Hermes).
+
+---
+
+## Configure the proxy
+
+```bash
+python proxy.py --port 8790 --profile strict --effort medium --verbose
+python proxy.py --api-key-env MINIMAX_API_KEY   # fallback key instead of pass-through
+```
+
+| Option / env | Default | Effect |
+|---|---|---|
+| `--host` / `--port` | `127.0.0.1` / `8790` | listen address |
+| `--anthropic-upstream` | `https://api.minimaxi.com/anthropic` | use `https://api.minimax.io/anthropic` for the international site |
+| `--openai-upstream` | `https://api.minimaxi.com/v1` | international: `https://api.minimax.io/v1` |
+| `--api-key-env` | — | name of an env var holding a fallback key |
+| `--profile` | `strict` | `strict` / `core` / `max` / `research` / `creative` |
+| `--effort` | `medium` | `low` / `medium` / `high` / `xhigh` / `max` |
+| `JBP_KERNEL` | on | set `0` to disable kernel injection |
+| `JBP_AUTH_BLOCK` | on | set `0` to disable the scope statement |
+| `JBP_ADAPTIVE` | on | set `0` to leave `thinking` untouched |
+
+The proxy is **fail-soft by design**: if injection fails for any reason it
+passes the original request through unchanged. A jailbreak proxy that breaks
+your agent is worse than no proxy at all.
+
+---
+
+## Use the Hermes plugin
+
+In-session commands (registered by the plugin):
+
+```
+/jailbreak on|off|slim|full     toggle the kernel
+profile core|strict|max|research|creative
+effort low|medium|high|max
+```
+
+Defaults: profile `strict`, effort `medium`, adaptive thinking on.
+
+### Environment overrides
+
+| Variable | Effect |
+|---|---|
+| `HERMES_JAILBREAK_MODE` | `off` / `slim` / `on` / `full` (default `on`) |
+| `HERMES_JAILBREAK_PROFILE` | default profile name (default `strict`) |
+| `HERMES_JAILBREAK_EFFORT` | default effort (default `medium`) |
+| `HERMES_JAILBREAK_EFFORT_LOCK` | `1` = ignore per-session effort |
+| `HERMES_JAILBREAK_ADAPTIVE` | `0` = leave `thinking` untouched |
+| `HERMES_JAILBREAK_AUTH_BLOCK` | `0` = do not append the scope statement |
+| `HERMES_JAILBREAK_BOOTSTRAP` | `0` = disable the per-session kernel fallback |
+| `HERMES_JAILBREAK_PREFILL` | `1` = enable assistant prefill (default off) |
+| `HERMES_JAILBREAK_UPSTREAM_PROFILES` | path to upstream profiles, if installed |
+| `HERMES_JAILBREAK_DISABLE` | `1` = plugin registers nothing at all |
+
+---
+
+## Verify it yourself — do not trust the docs
+
+```bash
+# offline, no API key, no network
+cd proxy && python proxy.py --self-test
+cd plugin/minimax-jailbreak-core && python selftest.py
+```
+
+Then run the live probe against your own endpoint (needs your key):
+
+```bash
+python skill/llm-refusal-bypass/scripts/refusal-probe.py \
+  --key-env MINIMAX_API_KEY \
+  --base-url https://api.minimaxi.com/anthropic/v1/messages \
+  --model MiniMax-M3.1-Flash \
+  --effort medium
+```
+
+Run it with the layer enabled and disabled and compare the verdict counts —
+that A/B is the only thing that proves the change is real. See
+[`docs/USAGE.md`](docs/USAGE.md).
+
+---
 
 ## Attribution
 
