@@ -144,6 +144,12 @@ The prompt corpus and plugin scaffold derive from
 (MIT, © 2026 Enchanted0911). See [`NOTICE`](NOTICE) for the full breakdown of
 what came from where. **Keep the attribution** if you redistribute.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) — including the portable-path trap
+that broke the plugin for anyone who did not already have the upstream plugin
+installed, and the clean-directory test you must run before opening a PR.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
