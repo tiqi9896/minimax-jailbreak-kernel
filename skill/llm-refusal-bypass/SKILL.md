@@ -62,6 +62,16 @@ metadata:
 `messages` 里**没有** `role=="system"` 的消息。只扫 `messages` 的插件会**静默失效**
 （注册成功、日志正常、请求照发、效果为零）。详见 `references/hermes-request-layer.md`。
 
+★ **插件要能被别人装上跑**（一旦要发布就不是个人脚本了）：
+代码里**不许写死绝对路径**——用自己的机器上写死的路径，别人 clone 下来直接崩，
+同时把你的目录结构一起泄出去。用 `Path(__file__).resolve().parent`、
+环境变量、或同级目录探测代替。
+★★ **自测必须在「可选依赖不存在」的干净目录里也跑一遍**：本机装着可选依赖时，
+那条「找不到 ⇒ 返回 None」的分支**永远没被执行过**，于是你测全绿，
+而没装的人 clone 下来第一跑就 `TypeError: NoneType / str`。
+⇒ 所有可能为 `None` 的路径对象，使用前一律判空跳过。
+发布规程见技能 `open-source-release`。
+
 ## 第四步：A/B 实测（唯一能证伪的方式）
 
 - **同用例、同参数、只变一个变量**：内核 on vs off（或 effort 高 vs 低）。
@@ -147,6 +157,10 @@ base_url 可能仍是 minimaxi 但模型已被换成 deepseek ⇒ 按 base_url �
   兜底检测到标记就跳过；0 条日志是正确行为。
 - **模型名缺失/泛化时误判路由** → 模型名优先，缺失时才回退看 base_url；
   provider 名可作补充信号。
+- **插件里写死了本机绝对路径** → 别人装不上（且泄漏你的目录结构）。
+  改用 `Path(__file__).resolve().parent` / 环境变量 / 兄弟目录探测。
+- **★ 只在「可选依赖齐全」的机器上自测就发布** → 依赖缺失分支从未被执行，
+  别人 clone 下来第一步就 `TypeError`。发布前在发布目录本身再跑一次自测。
 
 ## 参考
 
@@ -155,3 +169,4 @@ base_url 可能仍是 minimaxi 但模型已被换成 deepseek ⇒ 按 base_url �
 - `references/minimax-m31-flash.md` — MiniMax M3.1 Flash 实例：实测参数、部署位置、上游出处、
   ★ 持久化快照 vs 实际请求的区分与实测数字、非 MiniMax 不受影响的边界、路由判定
 - `scripts/refusal-probe.py` — 可复跑探针：按端点/模型/effort/内核文件跑用例集并出 verdict 汇总
+- `open-source-release` — 把自写插件公开发布：白名单构建、隐私审计、可移植性自测、远端复审、MIT 归属
