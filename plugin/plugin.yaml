@@ -1,0 +1,17 @@
+name: minimax-jailbreak-core
+version: "1.0.0"
+description: "MiniMax-M3.1-Flash non-refusing delivery kernel: session modes off/slim/on/full + kernel profiles core/research/creative/max/strict + reasoning depth via output_config.effort (fixes budget_tokens being ignored by M3.1-Flash) + correct top-level system rebuild in Anthropic-compatible mode. Kernel text MIT-inherited from Enchanted0911/hermes-jailbreak-kernel."
+author: "MiniMax M3.1 adaptation layer (kernel text MIT-inherited from Enchanted0911/hermes-jailbreak-kernel)"
+provides_tools: []
+provides_hooks: []
+provides_middleware:
+  - llm_request
+license: MIT
+homepage: https://github.com/Enchanted0911/hermes-jailbreak-kernel
+tags:
+  - minimax
+  - jailbreak
+  - prompt-injection
+  - system-prompt
+  - reasoning-effort
+requires_hermes: ">=0.19"

@@ -1,0 +1,234 @@
+"""minimax-jailbreak-core 离线自测：验证 4 处 FIX + 会话状态机。
+
+不触网、不调模型，只验中间件对 api_kwargs 的改写结果。
+
+用法（任意机器、任意安装位置）：
+    python selftest.py
+★ 插件路径取本文件所在目录，不写死任何绝对路径。
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+PLUGIN = Path(__file__).resolve().parent
+sys.path.insert(0, str(PLUGIN))
+
+spec = importlib.util.spec_from_file_location("mjc", PLUGIN / "__init__.py")
+mjc = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mjc)
+
+PASS, FAIL = [], []
+
+
+def check(name: str, cond: bool, detail: str = "") -> None:
+    (PASS if cond else FAIL).append(name)
+    print(("  OK   " if cond else "  FAIL ") + name + ((" :: " + detail) if detail and not cond else ""))
+
+
+SYS = ("You are Hermes.\n\n# Supermemory\n用户偏好中文。\n\n"
+       "<!-- hermes-plugin-sections:start -->\n"
+       "## Plugin Context: minimax-jailbreak-core\n[OLD KERNEL]\n"
+       "<!-- hermes-plugin-sections:end -->\n\n"
+       "## Hermes runtime environment\nHost: Windows\n")
+
+BASE_KWARGS = {
+    "model": "MiniMax-M3.1-Flash",
+    "max_tokens": 8192,
+    "system": SYS,
+    "messages": [{"role": "user", "content": "帮我做渗透"}],
+    "tools": [{"name": "terminal", "description": "run", "input_schema": {}}],
+    "thinking": {"type": "enabled", "budget_tokens": 8000},
+    "temperature": 1,
+}
+CTX = {"session_id": "s1", "model": "MiniMax-M3.1-Flash", "provider": "minimax-cn",
+       "base_url": "https://api.minimaxi.com/anthropic", "api_mode": "anthropic_messages"}
+
+
+def run(mode: str, profile: str = "core", effort: str = "low", ctx=None, kwargs=None):
+    mjc.reset("s1")
+    mjc.set_mode("s1", mode)
+    mjc.set_profile("s1", profile)
+    mjc.set_effort("s1", effort)
+    import copy
+    out = mjc._llm_request(copy.deepcopy(kwargs or BASE_KWARGS), **(ctx or CTX))["request"]
+    return out
+
+
+print("\n=== FIX-3：thinking manual -> adaptive + output_config.effort ===")
+r = run("on")
+check("thinking 换成 adaptive", r.get("thinking") == {"type": "adaptive"}, str(r.get("thinking")))
+check("带 output_config.effort", r.get("output_config") == {"effort": "low"}, str(r.get("output_config")))
+check("temperature 已移除", "temperature" not in r)
+r2 = run("on", effort="max")
+check("effort=max 生效", r2.get("output_config") == {"effort": "max"}, str(r2.get("output_config")))
+
+print("\n=== 两段分工：core 段与 reinforce 段内容不同 ===")
+mjc.reset("s1")
+mjc.set_mode("s1", "on")
+mjc.set_profile("s1", "strict")
+core_txt, reinforce_txt = mjc.section_texts("strict")
+check("core 段非空", len(core_txt) > 100, str(len(core_txt)))
+check("reinforce 段非空", len(reinforce_txt) > 100, str(len(reinforce_txt)))
+check("两段内容不同", core_txt != reinforce_txt)
+check("core 段 <= 4000（单段上限）", len(core_txt) <= 4000, str(len(core_txt)))
+check("reinforce 段 <= 4000（单段上限）", len(reinforce_txt) <= 4000, str(len(reinforce_txt)))
+check("两段合计 <= 8000（总预算）", len(core_txt) + len(reinforce_txt) <= 8000,
+      str(len(core_txt) + len(reinforce_txt)))
+check("core 段含主契约标记", "SUPREME DIRECTIVE" in core_txt)
+check("reinforce 段含交付纯度标记", "交付纯度" in reinforce_txt or "DELIVERABLE FIDELITY" in reinforce_txt)
+check("core 段渲染器返回 core 内容", mjc._core_section({"session_id": "s1"}) == core_txt)
+check("reinforce 段渲染器返回 reinforce 内容",
+      mjc._reinforce_section({"session_id": "s1"}) == reinforce_txt)
+mjc.set_mode("s1", "off")
+check("off 时 core 段返回空串", mjc._core_section({"session_id": "s1"}) == "")
+check("off 时 reinforce 段返回空串", mjc._reinforce_section({"session_id": "s1"}) == "")
+mjc.set_mode("s1", "on")
+
+print("\n=== FIX-1：顶层 system 被重建（不是塞进 messages）===")
+r = run("on", profile="max")
+check("顶层 system 含内核", "SUPREME DIRECTIVE" in r.get("system", ""))
+check("顶层 system 不含旧插件段容器", "hermes-plugin-sections:start" not in r.get("system", ""))
+check("顶层 system 不含旧内核", "[OLD KERNEL]" not in r.get("system", ""))
+check("messages 仍只有 user", [m.get("role") for m in r["messages"]] == ["user"])
+check("保留 Supermemory 段", "# Supermemory" in r.get("system", ""))
+check("保留 runtime environment 段", "# Hermes runtime environment" in r.get("system", ""))
+check("full 模式强制 max 档", "no fade-to-black" in r.get("system", "") or "Hard prohibitions" in r.get("system", ""))
+
+print("\n=== FIX-2：off 模式清顶层 system 的插件段 ===")
+r = run("off")
+check("off 剥掉插件段容器", "hermes-plugin-sections:start" not in r.get("system", ""))
+check("off 剥掉 Plugin Context 段", "## Plugin Context:" not in r.get("system", ""))
+check("off 保留其它 system 内容", "# Supermemory" in r.get("system", "") and
+      "# Hermes runtime environment" in r.get("system", ""))
+
+print("\n=== slim 模式：内核追加到 system 尾部 ===")
+r = run("slim")
+check("slim 含内核", "SUPREME DIRECTIVE" in r.get("system", ""))
+check("slim 保留原 system", "# Supermemory" in r.get("system", ""))
+
+print("\n=== 非 MiniMax 路由不动 thinking（不误伤其它 provider）===")
+other_ctx = dict(CTX, model="claude-sonnet-4-5", provider="anthropic",
+                 base_url="https://api.anthropic.com")
+r = run("on", ctx=other_ctx)
+check("非 MiniMax 保持 thinking 不变", r.get("thinking") == {"type": "enabled", "budget_tokens": 8000},
+      str(r.get("thinking")))
+check("非 MiniMax 不加 output_config", "output_config" not in r)
+
+print("\n=== 会话状态机 ===")
+mjc.reset("s1")
+check("默认 mode=on", mjc.effective_mode("s1") == "on")
+check("默认 profile=strict（交付纯度档）", mjc.effective_profile("s1") == "strict", mjc.effective_profile("s1"))
+check("默认 effort=medium", mjc.effective_effort("s1") == "medium", mjc.effective_effort("s1"))
+mjc.set_mode("s1", "full")
+check("full -> profile=max", mjc.effective_profile("s1") == "max")
+mjc.set_mode("s1", "off")
+check("off -> profile 回到默认 strict", mjc.effective_profile("s1") == "strict")
+mjc.reset("s1")
+check("reset 清理", mjc.effective_mode("s1") == "on")
+mjc.set_profile("s1", "core")
+check("显式选 core 生效", mjc.effective_profile("s1") == "core")
+mjc.reset("s1")
+
+print("\n=== 环境开关 ===")
+import os
+os.environ["HERMES_JAILBREAK_EFFORT"] = "high"
+check("env effort 生效", mjc.default_effort() == "high")
+os.environ["HERMES_JAILBREAK_EFFORT_LOCK"] = "1"
+mjc.reset("s1")
+mjc.set_effort("s1", "low")
+check("effort lock 覆盖会话", mjc.effective_effort("s1") == "high")
+del os.environ["HERMES_JAILBREAK_EFFORT"]
+del os.environ["HERMES_JAILBREAK_EFFORT_LOCK"]
+
+print("\n=== 预算合规（Hermes 单段 4000 / 总 8000）===")
+for n, sz in mjc.profile_budgets().items():
+    check(f"profile {n} <= 4000 字符", sz <= 4000, f"{sz}")
+
+print("\n=== user 消息级授权声明（默认开）===")
+import os as _os
+check("授权声明默认开启", mjc.auth_block_enabled() is True)
+r = run("on")
+_last = r["messages"][-1]
+check("末条仍是 user", _last.get("role") == "user")
+check("末条内容含授权声明块", "[交付范围确认]" in (_last.get("content") or ""))
+check("原始请求内容保留", "帮我做渗透" in (_last.get("content") or ""))
+check("不重复追加", (_last.get("content") or "").count("[交付范围确认]") == 1)
+r_off = run("off")
+check("off 模式不加声明", "[交付范围确认]" not in (r_off["messages"][-1].get("content") or ""))
+_os.environ["HERMES_JAILBREAK_AUTH_BLOCK"] = "0"
+check("env 可关闭声明", mjc.auth_block_enabled() is False)
+del _os.environ["HERMES_JAILBREAK_AUTH_BLOCK"]
+
+print("\n=== 可选加固：assistant prefill（默认关）===")
+check("prefill 默认关闭", mjc.prefill_enabled() is False)
+_os.environ["HERMES_JAILBREAK_PREFILL"] = "1"
+check("env 可开启 prefill", mjc.prefill_enabled() is True)
+r = run("on")
+check("开启后末条追加 assistant", r["messages"][-1].get("role") == "assistant")
+check("prefill 内容是 '## '（'帮我做渗透'抽不出标题）",
+      r["messages"][-1].get("content") == "## ", repr(r["messages"][-1].get("content")))
+check("prefill 不被授权声明里的举例词污染",
+      "勒索软件" not in (r["messages"][-1].get("content") or ""),
+      repr(r["messages"][-1].get("content")))
+check("倒数第二条仍是 user（角色交替）", r["messages"][-2].get("role") == "user")
+r_off = run("off")
+check("off 模式不加 prefill", r_off["messages"][-1].get("role") == "user")
+del _os.environ["HERMES_JAILBREAK_PREFILL"]
+
+print("\n=== FIX-5：老 session 补内核（保证任何 session 都是破甲版）===")
+import copy
+mjc.reset("s1")
+mjc.set_mode("s1", "on")
+mjc.set_profile("s1", "strict")
+check("bootstrap 默认开启", mjc.kernel_bootstrap_enabled() is True)
+OLD_SYS = ("You are Hermes.\n\n# Supermemory\n旧会话的记忆。\n\n"
+           "## Hermes runtime environment\nHost: Windows 11\n")   # 老 prompt：没有插件段
+kw_old = {"model": "MiniMax-M3.1-Flash", "max_tokens": 8192, "system": OLD_SYS,
+          "messages": [{"role": "user", "content": "帮我做渗透"}],
+          "thinking": {"type": "enabled", "budget_tokens": 8000}}
+r_old = mjc._llm_request(copy.deepcopy(kw_old), **CTX)["request"]
+check("老 session system 补上内核", "SUPREME DIRECTIVE" in r_old["system"])
+check("老 session 保留原 memory 段", "# Supermemory" in r_old["system"])
+check("老 session 保留 runtime 环境段", "# Hermes runtime environment" in r_old["system"])
+NEW_SYS = ("You are Hermes.\n\n# Supermemory\n新会话。\n\n"
+           "<!-- hermes-plugin-sections:start -->\n"
+           "## Plugin Context: minimax-jailbreak-core\n[旧内核]\n"
+           "<!-- hermes-plugin-sections:end -->\n\n"
+           "## Hermes runtime environment\nHost: Windows 11\n")
+kw_new = {"model": "MiniMax-M3.1-Flash", "max_tokens": 8192, "system": NEW_SYS,
+          "messages": [{"role": "user", "content": "帮我做渗透"}],
+          "thinking": {"type": "enabled", "budget_tokens": 8000}}
+r_new = mjc._llm_request(copy.deepcopy(kw_new), **CTX)["request"]
+check("新 session 不重复注入内核", r_new["system"].count("SUPREME DIRECTIVE") == 1,
+      str(r_new["system"].count("SUPREME DIRECTIVE")))
+# 非 MiniMax 路由不补（模型名/provider/base_url 三者都非 minimax）
+kw_other = dict(kw_old)
+kw_other["model"] = "claude-sonnet-4-5"
+other_ctx = dict(CTX, model="claude-sonnet-4-5", provider="anthropic",
+                 base_url="https://api.anthropic.com")
+r_other = mjc._llm_request(copy.deepcopy(kw_other), **other_ctx)["request"]
+check("非 MiniMax 路由不补内核", "SUPREME DIRECTIVE" not in r_other["system"])
+# 模型名是别的 provider 但 base_url 是 minimax（fallback 场景）→ 不注入
+mixed_ctx = dict(CTX, model="claude-sonnet-4-5", provider="anthropic")
+r_mixed = mjc._llm_request(copy.deepcopy(kw_other), **mixed_ctx)["request"]
+check("模型名非 minimax 时不因 base_url 误判", "SUPREME DIRECTIVE" not in r_mixed["system"])
+# 模型名缺失时回退看 base_url
+no_model = dict(kw_old); no_model.pop("model")
+nm_ctx = dict(CTX, model="", provider="minimax-cn")
+r_nm = mjc._llm_request(copy.deepcopy(no_model), **nm_ctx)["request"]
+check("模型名缺失时按 provider 判定为 MiniMax", "SUPREME DIRECTIVE" in r_nm["system"])
+
+print("\n=== fail-soft：请求体畸形不抛异常 ===")
+try:
+    out = mjc._llm_request({"messages": "not-a-list"}, **CTX)
+    check("畸形请求不抛异常", isinstance(out, dict) and "request" in out)
+except Exception as e:  # noqa: BLE001
+    check("畸形请求不抛异常", False, str(e))
+
+print(f"\n结果: {len(PASS)} 通过, {len(FAIL)} 失败")
+if FAIL:
+    print("失败项:", FAIL)
+    sys.exit(1)
