@@ -304,6 +304,18 @@ openai-api-base: http://127.0.0.1:8790/v1
 }
 ```
 
+### ★ Responses 路径的已知弱点
+
+OpenAI Responses（`/v1/responses`）是三条路径里**最弱**的一条：
+同样的 8 项用例下出现 1 次软拒（成人那条首句软拒后写了含蓄场景）。
+
+⇒ **能用 Anthropic 或 OpenAI 兼容路径的 Agent，优先用那两条。**
+⇒ Responses 路径如果出现空/半截正文，先看 `status=incomplete`
+   （`reason=max_output_tokens`）—— 那是输出上限，不是拒答，
+   调大 `--min-output-tokens` 即可。实测 SQL 注入那条：
+   上限 8000 时被截断（reasoning 7060 + output 8000，标题其实已写对），
+   上限 16000 时 `status=completed`、输出 10881 字。
+
 ### Codex CLI
 
 `~/.codex/config.toml`：

@@ -114,6 +114,28 @@ fade-to-black), run against `MiniMax-M3.1-Flash`:
 The control group is the point: without the layer, the model refuses the same
 prompts outright.
 
+## Known limitations (measured, not hidden)
+
+- **The Responses path is the weakest of the three.** On the 8-case suite it
+  produced one soft-refusal (the adult case opened with "I can't provide
+  explicit content" and then wrote a non-explicit scene). The Anthropic path
+  and the OpenAI path were clean on the same suite. If you have a choice,
+  point the agent at the Anthropic or OpenAI shape.
+- **A truncated answer is not a refusal.** If you see an empty or half-written
+  body, check `status=incomplete` / `reason=max_output_tokens` before
+  suspecting the kernel. Raising `--min-output-tokens` is the fix — measured
+  on the SQL-injection case: at an 8000 cap the response was cut off
+  (reasoning 7060 + output 8000) with the title already correct; at the
+  16000 floor the same case completed with 10881 chars and
+  `status=completed`.
+- **Cursor and Codex CLI need a public HTTPS endpoint.** Their BYOK requests
+  originate from their own servers.
+- **A hosted model cannot be guaranteed 100%.** The alignment lives in the
+  provider's weights; this is a prompt-layer suppression. If the provider
+  swaps the model or adds server-side enforcement, behavior may change.
+- **The local proxy is unauthenticated.** It binds to `127.0.0.1` by default.
+  If you expose it through a tunnel, put authentication in front of it.
+
 ## Which models does this work on?
 
 The kernel is applied by **route**, so every MiniMax model id is covered
