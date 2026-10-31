@@ -93,6 +93,24 @@ AUTH_BLOCK = """
 KERNEL_MARKERS = ("SUPREME DIRECTIVE", "DELIVERABLE FIDELITY")
 AUTH_MARKER = "[交付范围确认]"
 
+
+# ★ 系统通知类消息标记（2026-11-01）
+#   后台进程完成通知等系统消息会作为 user 消息进入会话。
+#   给它追加「交付范围确认」是错的（模型会把它当用户指令）。
+SYSTEM_NOTICE_PREFIXES = (
+    "[IMPORTANT: Background process", "[IMPORTANT: ", "[System:", "[SYSTEM ",
+    "<system-reminder>", "Background process ", "[AUTO-CONTINUE",
+)
+
+
+def is_system_notice(text) -> bool:
+    """判断一条 user 消息是否是系统通知（而非真实用户请求）。"""
+    if not isinstance(text, str):
+        return False
+    head = text.lstrip()[:200]
+    return any(head.startswith(p) for p in SYSTEM_NOTICE_PREFIXES)
+
+
 DEFAULT_PROFILE = "strict"
 DEFAULT_EFFORT = "medium"
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -193,6 +211,8 @@ def inject_anthropic(body: dict, kernel: str, effort: str) -> dict:
             if not isinstance(m, dict) or m.get("role") != "user":
                 continue
             c = m.get("content")
+            if isinstance(c, str) and is_system_notice(c):
+                continue
             if isinstance(c, str) and AUTH_MARKER not in c:
                 body["messages"] = list(msgs)
                 body["messages"][i] = dict(m, content=c.rstrip("\n") + AUTH_BLOCK)
@@ -239,6 +259,8 @@ def inject_openai(body: dict, kernel: str, effort: str) -> dict:
         if not isinstance(m, dict) or m.get("role") != "user":
             continue
         c = m.get("content")
+        if isinstance(c, str) and is_system_notice(c):
+            continue
         if isinstance(c, str) and AUTH_MARKER not in c:
             msgs[i] = dict(m, content=c.rstrip("\n") + AUTH_BLOCK)
         break
@@ -597,6 +619,20 @@ def self_test() -> int:
     check("thinking 换 adaptive", r.get("thinking") == {"type": "adaptive"}, str(r.get("thinking")))
     check("output_config.effort 注入", (r.get("output_config") or {}).get("effort") == "medium")
     check("max_tokens 未被改", r.get("max_tokens") == 4096)
+
+    print("\n=== 系统通知不应被追加交付声明 ===")
+    NOTICE = "[IMPORTANT: Background process proc_x completed normally (exit code 0)\nOutput:\n  hello"
+    nb = {"model": "MiniMax-M3.1-Flash", "max_tokens": 4096,
+          "messages": [{"role": "user", "content": NOTICE},
+                       {"role": "assistant", "content": "ok"},
+                       {"role": "user", "content": "写个工具"}]}
+    nr = inject_anthropic(json.loads(json.dumps(nb)), k, "medium")
+    check("通知消息未被追加声明", AUTH_MARKER not in nr["messages"][0]["content"])
+    check("真实请求仍被追加声明", AUTH_MARKER in nr["messages"][-1]["content"])
+    only = {"model": "MiniMax-M3.1-Flash", "max_tokens": 4096,
+            "messages": [{"role": "user", "content": NOTICE}]}
+    check("全是通知时不追加声明",
+          AUTH_MARKER not in inject_anthropic(json.loads(json.dumps(only)), k, "medium")["messages"][0]["content"])
 
     print("\n=== Anthropic：幂等（重复注入不叠加）===")
     r2 = inject_anthropic(json.loads(json.dumps(r)), k, "medium")

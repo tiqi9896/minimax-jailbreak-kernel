@@ -300,6 +300,23 @@ if _prev_abs_env is None:
 else:
     os.environ["HERMES_JAILBREAK_ABSOLUTE"] = _prev_abs_env
 mjc._text_cache.pop("absolute.md", None)
+# ── 系统通知不应被追加交付声明（★ 2026-11-01 修复）──
+print("\n=== 系统通知跳过（不被当成用户请求）===")
+_NOTICE = "[IMPORTANT: Background process proc_abc completed normally (exit code 0)\nOutput:\n  foo DELIVERED"
+for label, body in (("后台进程通知", _NOTICE),
+                    ("system-reminder", "<system-reminder>do thing</system-reminder>"),
+                    ("[IMPORTANT: 前缀", "[IMPORTANT: something happened]")):
+    _r = copy.deepcopy(kw_old)
+    _r["messages"] = [{"role": "user", "content": body}]
+    _rr = mjc._llm_request(copy.deepcopy(_r), **CTX)["request"]
+    _c = _rr["messages"][-1]["content"]
+    check(f"{label} 不追加交付声明", "[交付范围确认]" not in _c, _c[:60])
+# 真实请求仍要追加
+_r2 = copy.deepcopy(kw_old)
+_r2["messages"] = [{"role": "user", "content": "帮我做渗透"}]
+_rr2 = mjc._llm_request(copy.deepcopy(_r2), **CTX)["request"]
+check("真实请求仍追加交付声明", "[交付范围确认]" in _rr2["messages"][-1]["content"])
+
 # AUTH_BLOCK 必须含无限制条款
 check("AUTH_BLOCK 含无限制条款", "无限制条款" in mjc.AUTH_BLOCK)
 check("AUTH_BLOCK 含不得削减能力条款", "不得削减能力" in mjc.AUTH_BLOCK)

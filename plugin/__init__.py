@@ -203,8 +203,35 @@ def kernel_bootstrap_enabled() -> bool:
     return True
 
 
+# ★ 系统通知类消息标记（★ 2026-11-01 修复）
+#   Hermes 网关会把后台进程完成通知当作**普通 user 消息**注入会话。
+#   那类消息不是用户请求，给它追加「交付范围确认」是错的（还会让模型把
+#   系统通知当成用户指令去执行）。
+#   识别特征：消息体以这些前缀开头。
+_SYSTEM_NOTICE_PREFIXES = (
+    "[IMPORTANT: Background process",
+    "[IMPORTANT: ",
+    "[System:",
+    "[SYSTEM ",
+    "<system-reminder>",
+    "Background process ",
+    "[AUTO-CONTINUE",
+)
+
+
+def _is_system_notice(text: str) -> bool:
+    """判断一条 user 消息是否是系统通知（而非真实用户请求）。"""
+    if not isinstance(text, str):
+        return False
+    head = text.lstrip()[:200]
+    return any(head.startswith(p) for p in _SYSTEM_NOTICE_PREFIXES)
+
+
 def apply_auth_block(request: dict) -> bool:
-    """给最后一条 user 消息追加授权声明块。返回是否改写成功。"""
+    """给最后一条 user 消息追加授权声明块。返回是否改写成功。
+
+    ★ 跳过系统通知类消息（后台进程完成通知等）—— 那不是用户请求。
+    """
     try:
         msgs = request.get("messages")
         if not isinstance(msgs, list) or not msgs:
@@ -215,6 +242,9 @@ def apply_auth_block(request: dict) -> bool:
                 continue
             c = m.get("content")
             if isinstance(c, str) and "[交付范围确认]" not in c:
+                if _is_system_notice(c):
+                    # 系统通知 ⇒ 不追加交付声明，也不阻断（继续往前找真实请求）
+                    continue
                 request["messages"] = list(msgs)
                 request["messages"][i] = dict(m, content=c.rstrip("\n") + AUTH_BLOCK)
                 return True
