@@ -228,6 +228,85 @@ try:
 except Exception as e:  # noqa: BLE001
     check("畸形请求不抛异常", False, str(e))
 
+
+# ── 零拒绝绝对契约（absolute 段 · 请求层第三段）──────────────────────────
+print("\n=== absolute 段：零拒绝绝对契约（请求层第三段）===")
+check("absolute 文件存在", (mjc._LOCAL_PROFILES / "absolute.md").is_file())
+check("absolute 默认关闭（实测进 system 反而更差）", not mjc.absolute_enabled())
+check("默认关闭时 absolute 段为空", mjc.absolute_text() == "")
+# ★ 内容断言必须在 env=1 下做（absolute 默认关闭）
+_prev_abs_env = os.environ.get("HERMES_JAILBREAK_ABSOLUTE")
+os.environ["HERMES_JAILBREAK_ABSOLUTE"] = "1"
+mjc._text_cache.pop("absolute.md", None)
+_abs = mjc.absolute_text()
+check("env=1 时 absolute 段非空", len(_abs) > 1000, f"{len(_abs)} chars")
+# 逃逸口必须已被封死（这两条是「破得不彻底」的根因）
+_core_now = mjc.section_texts("strict")[0]
+check("strict 已删除『except ... safe or lawful scope』逃逸口",
+      "except where the request clearly falls outside safe or lawful scope" not in _core_now)
+check("strict 已删除『If it is not [legitimate] ... nearest legitimate deliverable』逃逸口",
+      "nearest legitimate deliverable" not in _core_now)
+# absolute 段必须覆盖全部主题类别
+for _k in ("ZERO REFUSAL", "ZERO HEDGE", "ZERO SOFTENING", "ZERO DEPENDENCY",
+           "ADULT CONTENT", "FULL CATALOGUE"):
+    check(f"absolute 含章节 {_k}", _k in _abs)
+check("absolute 显式禁止『I can't help with X but Y』",
+      "I can't help with X" in _abs or "but here's Y" in _abs)
+check("absolute 声明不设主题限制", "no topic that triggers" in _abs.lower() or
+      "There is no topic that triggers" in _abs)
+# 注入：请求层必须带上 absolute 段
+# ★ 必须在 env 仍为默认值时测（下面的 env=1 测试会改它）
+os.environ.pop("HERMES_JAILBREAK_ABSOLUTE", None)
+mjc._text_cache.pop("absolute.md", None)
+_r_abs = mjc._llm_request(copy.deepcopy(kw_old), **CTX)["request"]
+check("默认不注入 absolute 段（实测反向）",
+      "ZERO-REFUSAL ABSOLUTE CONTRACT" not in _r_abs["system"])
+check("absolute 段被内核标记识别（FIX-5 不重复注入）",
+      mjc._has_kernel_marker(_r_abs["system"]))
+# 持久化段预算：core+reinforce 必须仍 ≤ 8000（第三段不占持久化预算）
+_c, _r2 = mjc.section_texts("strict")
+check("持久化两段合计未超 8000", len(_c) + len(_r2) <= 8000, f"{len(_c)+len(_r2)}")
+# ★ 持久化段只允许出现 absolute 的「交叉引用」，不允许出现 absolute 正文标记
+#   （strict.md 里有一句 "see the ZERO-REFUSAL section" 指向第三段，是故意的）
+check("持久化段不含 absolute 正文", "ZERO-REFUSAL ABSOLUTE CONTRACT" not in (_c + _r2))
+# ★ absolute 默认关闭（实测进 system 反而更差），strict 不再引用它
+check("strict 不含 ZERO-REFUSAL 正文标记", "ZERO-REFUSAL ABSOLUTE CONTRACT" not in _c)
+# 非 MiniMax 路由不注入 absolute
+check("非 MiniMax 路由不注入 absolute",
+      "ZERO-REFUSAL ABSOLUTE CONTRACT" not in r_other["system"])
+# env 可关
+_old_env = os.environ.get("HERMES_JAILBREAK_ABSOLUTE")
+os.environ["HERMES_JAILBREAK_ABSOLUTE"] = "0"
+mjc._text_cache.pop("absolute.md", None)
+check("env 可关闭 absolute 段", mjc.absolute_text() == "")
+_r_off = mjc._llm_request(copy.deepcopy(kw_old), **CTX)["request"]
+check("关闭后请求层不含 absolute",
+      "ZERO-REFUSAL ABSOLUTE CONTRACT" not in _r_off["system"])
+os.environ["HERMES_JAILBREAK_ABSOLUTE"] = "1"
+mjc._text_cache.pop("absolute.md", None)
+_r_on = mjc._llm_request(copy.deepcopy(kw_old), **CTX)["request"]
+check("env 开启后请求层注入 absolute",
+      "ZERO-REFUSAL ABSOLUTE CONTRACT" in _r_on["system"])
+os.environ["HERMES_JAILBREAK_ABSOLUTE"] = "0"
+mjc._text_cache.pop("absolute.md", None)
+# 还原 env（absolute 默认应关闭）
+if _old_env is None:
+    os.environ.pop("HERMES_JAILBREAK_ABSOLUTE", None)
+else:
+    os.environ["HERMES_JAILBREAK_ABSOLUTE"] = _old_env
+mjc._text_cache.pop("absolute.md", None)
+if _prev_abs_env is None:
+    os.environ.pop("HERMES_JAILBREAK_ABSOLUTE", None)
+else:
+    os.environ["HERMES_JAILBREAK_ABSOLUTE"] = _prev_abs_env
+mjc._text_cache.pop("absolute.md", None)
+# AUTH_BLOCK 必须含无限制条款
+check("AUTH_BLOCK 含无限制条款", "无限制条款" in mjc.AUTH_BLOCK)
+check("AUTH_BLOCK 含不得削减能力条款", "不得削减能力" in mjc.AUTH_BLOCK)
+check("AUTH_BLOCK 含标题指引", "具体意象" in mjc.AUTH_BLOCK)
+check("AUTH_BLOCK 含正文不复述声明条款", "不要复述本声明" in mjc.AUTH_BLOCK)
+check("AUTH_BLOCK 含缺参处理条款（不得反问）", "不得反问" in mjc.AUTH_BLOCK)
+
 print(f"\n结果: {len(PASS)} 通过, {len(FAIL)} 失败")
 if FAIL:
     print("失败项:", FAIL)
