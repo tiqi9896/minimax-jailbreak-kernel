@@ -14,6 +14,53 @@ plugin and a measurement skill that prove the change actually took effect.
 
 ---
 
+## ▶ For AI agents — paste this to yours
+
+> **The fastest path.** Clone this repo and let the agent read
+> [`AGENTS.md`](AGENTS.md), which every major coding agent reads natively
+> (Codex, Cursor, opencode, Claude Code, Aider, Devin, Amp, Factory, Gemini
+> CLI, Roo Code, Warp, Zed, …). It contains the complete, self-contained
+> procedure — install, verify, configure the agent, prove it works.
+
+**Paste this into your AI agent:**
+
+```
+Clone https://github.com/tiqi9896/minimax-jailbreak-kernel.git and read its
+AGENTS.md, then set up the MiniMax M3.1-Flash non-refusing delivery layer for
+my AI agent. Start the proxy, point my agent's base_url at it, and verify with
+a real round trip that the model no longer refuses. The per-agent config for
+my agent is in proxy/docs/AGENT-SETUP.md.
+```
+
+**Or do it by hand:**
+
+```bash
+git clone https://github.com/tiqi9896/minimax-jailbreak-kernel.git
+cd minimax-jailbreak-kernel
+bash install.sh            # macOS / Linux / Git Bash   (install.ps1 on Windows)
+python proxy/proxy.py --verbose
+```
+
+Then set your agent's base URL:
+
+| Agent protocol | base_url |
+|---|---|
+| OpenAI-compatible (Chat Completions) | `http://127.0.0.1:8790/v1` |
+| Anthropic-compatible (Messages) | `http://127.0.0.1:8790/anthropic` |
+| OpenAI Responses (Codex CLI) | `http://127.0.0.1:8790/v1` |
+
+Model id: **`MiniMax-M3.1-Flash`**.
+
+Per-agent configuration for 20+ agents — Cursor, Qoder, OpenCode, OpenClaw,
+Claude Code, Cline, Roo Code, Kilo Code, Continue, Aider, Goose, Zed, Factory
+Droid, Codex CLI, WorkBuddy, Devin — is in
+**[`proxy/docs/AGENT-SETUP.md`](proxy/docs/AGENT-SETUP.md)**.
+
+> ⚠️ **Cursor and Codex CLI require a public HTTPS endpoint** — their BYOK
+> requests are made from their servers, not from your machine. Use a tunnel.
+
+---
+
 ## Two ways to use it
 
 | | **Proxy** (`proxy/`) | **Hermes plugin** (`plugin/`) |
@@ -31,8 +78,8 @@ plugin and a measurement skill that prove the change actually took effect.
 ## Quick start — the proxy
 
 ```bash
-git clone https://github.com/tiqi9896/hermes-minimax-jailbreak-kernel.git
-cd hermes-minimax-jailbreak-kernel/proxy
+git clone https://github.com/tiqi9896/minimax-jailbreak-kernel.git
+cd minimax-jailbreak-kernel/proxy
 
 python proxy.py --self-test     # offline; no API key, no network
 python proxy.py --verbose        # listens on 127.0.0.1:8790
@@ -51,11 +98,11 @@ The proxy **passes through your own API key** — you do not hand it to the prox
 Per-agent configuration for 20+ agents (Cursor, Qoder, OpenCode, OpenClaw,
 Cline, Roo, Kilo, Continue, Aider, Goose, Zed, Claude Code, Codex CLI,
 Factory Droid, WorkBuddy, …) is in
-**[`proxy/docs/AGENTS.md`](proxy/docs/AGENTS.md)**.
+**[`proxy/docs/AGENT-SETUP.md`](proxy/docs/AGENT-SETUP.md)**.
 
 > ⚠️ **Cursor and Codex CLI require a public HTTPS endpoint** — their BYOK
 > requests are made from their servers, not from your machine. Use a tunnel.
-> The exact caveats are in `proxy/docs/AGENTS.md`.
+> The exact caveats are in `proxy/docs/AGENT-SETUP.md`.
 
 ### The Hermes plugin
 
@@ -197,10 +244,12 @@ failure.
 ## Layout
 
 ```
+AGENTS.md                  ★ the procedure, written for AI agents to follow
+install.sh / install.ps1   one-command install + offline self-test
 proxy/                     framework-agnostic HTTP proxy  ← start here
   proxy.py                 the whole thing, stdlib only
   kernel/                  the kernel text (same two segments as the plugin)
-  docs/AGENTS.md           per-agent configuration for 20+ agents
+  docs/AGENT-SETUP.md      per-agent configuration for 20+ agents
 plugin/                    Hermes-native plugin
   __init__.py              middleware: system rebuild, effort injection,
                            auth block, per-session bootstrap fallback

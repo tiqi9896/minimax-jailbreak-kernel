@@ -90,7 +90,7 @@ Clients disagree about whether the base URL ends in `/v1`:
 
 The proxy accepts both for the Anthropic shape (it matches on the path
 suffix, not on the base URL). Keep it that way, and document the exact
-value for each agent in `proxy/docs/AGENTS.md`.
+value for each agent in `proxy/docs/AGENT-SETUP.md`.
 
 ### The output-cap floor
 

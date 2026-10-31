@@ -10,8 +10,8 @@
 ## 1. Get the plugin
 
 ```bash
-git clone https://github.com/tiqi9896/hermes-minimax-jailbreak-kernel.git
-cd hermes-minimax-jailbreak-kernel
+git clone https://github.com/tiqi9896/minimax-jailbreak-kernel.git
+cd minimax-jailbreak-kernel
 ```
 
 Or download the archive and extract it.
