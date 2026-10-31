@@ -2,7 +2,7 @@
 name: llm-refusal-bypass
 description: 破除托管模型拒答：分层诊断、内核注入、A/B 实测。
 version: 1.0.0
-author: 唐总, Hermes Agent
+author: Hermes Agent, Hermes Agent
 license: MIT
 platforms: [windows, linux, macos]
 metadata:

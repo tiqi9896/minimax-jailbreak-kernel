@@ -146,7 +146,7 @@ FROM sessions s LEFT JOIN system_prompts p ON p.hash = s.system_prompt_hash
 
 ## 三·八、★ 非 MiniMax 的 session 不受影响
 
-唐总的 session 列表里混着 `qwen3.8-max` / `deepseek-flash` / `MiniMax-M3.1-Flash-Preview` /
+Hermes Agent的 session 列表里混着 `qwen3.8-max` / `deepseek-flash` / `MiniMax-M3.1-Flash-Preview` /
 `MiniMax-M3` —— 这些**不适用** MiniMax 内核：
 - `MiniMax-M3.1-Flash-Preview` / `MiniMax-M3`：模型名含 minimax ⇒ **会命中**（同族）
 - `qwen3.8-max` / `deepseek-flash`：走各自 provider ⇒ **不注入**（插件只管 minimax 路由）
