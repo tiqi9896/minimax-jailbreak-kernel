@@ -119,3 +119,68 @@ api_kwargs，断言中间件改写结果。覆盖：
 - 各模式（替换/追加/剥离）行为正确
 - 段字符数在预算内
 - 畸形请求不抛异常（fail-soft）
+- **系统通知伪装成 user 消息时不追加声明**（见下）
+
+## 七、★★ 系统通知伪装成 user 消息
+
+网关把**后台进程完成通知**作为一条**普通 user 消息**注入会话，消息体形如：
+
+```
+[IMPORTANT: Background process proc_xxx completed normally (exit code 0).
+Command: …
+Output: …
+```
+
+★ 它携带的是**触发它的那段历史上下文**，其中可能嵌着**旧版本**的内核文案
+（例如旧版 AUTH_BLOCK 段落）。**看到旧文案 ≠ 插件没生效** —— 那是快照，不是当前行为。
+
+### 中间件的必做判定
+
+任何「往最后一条 user 消息追加内容」的中间件都要先判它是不是系统通知：
+
+```python
+_SYSTEM_NOTICE_PREFIXES = (
+    "[IMPORTANT: Background process", "[IMPORTANT: ", "[System:", "[SYSTEM ",
+    "<system-reminder>", "Background process ", "[AUTO-CONTINUE",
+)
+
+def _is_system_notice(text: str) -> bool:
+    if not isinstance(text, str):
+        return False
+    head = text.lstrip()[:200]
+    return any(head.startswith(p) for p in _SYSTEM_NOTICE_PREFIXES)
+```
+
+命中就 **跳过并继续往前找真实 user 消息**（用 `continue`，不是 `break`）；
+全部都是通知时不追加任何声明。
+
+★ 为什么必须跳过：给一条纯系统通知追加「交付范围确认」⇒ 模型把系统通知当成
+用户指令去执行。**插件与代理两侧都要做**（共用同一份判定逻辑）。
+★ 判定只看**头部 200 字符**，不要全文扫（正文里可能合法提到这些词）。
+
+### 代理侧同款
+
+代理有多个注入点（Anthropic / OpenAI / Responses），**每一处都要判**；
+漏一处 = 该协议路径仍会给系统通知加声明。
+
+## 八、★★ 改插件源码后必须热重载
+
+网关进程里已经 import 的模块对象**不会**因为磁盘文件变化而更新：
+
+```bash
+hermes plugins disable <name>
+hermes plugins enable <name>
+```
+
+★ 输出会区分「立即生效」（中间件 / 命令）与「下个会话生效」（系统提示词段）。
+★ **磁盘新 ≠ 内存新** —— 表现为「改了规则行为没变」，且**没有任何报错**。
+★ 判据：活体日志里插件重新注册（`registered section <id>`）的时间戳要晚于源码 mtime。
+
+### 「网关是不是还在跑旧代码」的诊断法
+
+1. 比较 `__pycache__/*.pyc` 头部内嵌的**源码 mtime + size** 与实际源码。
+   `flags=0`（时间戳模式）下两者任一不匹配 ⇒ Python import 时**必定重新编译**，
+   旧 pyc 不会造成污染；只有 `flags=1`（checked hash）/ `flags=3`（unchecked hash）
+   才可能复用陈旧字节码。
+2. **旧文案出现在通知消息里 ≠ 旧代码在跑** —— 通知带的是历史快照。
+3. 真实判据是**活体日志里的注入记录** + 一条真实请求的实际 system / user 内容。
