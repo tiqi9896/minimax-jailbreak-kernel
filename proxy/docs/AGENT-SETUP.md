@@ -1,5 +1,7 @@
 # 把任意 AI Agent 接上破甲代理
 
+> **本文件即中文版。** 逐个 AI Agent 的 base_url 配置、协议陷阱与验证方法。
+
 破甲代理是**框架无关**的：它工作在 HTTP 层，任何能改 `base_url` 的 Agent
 都能用，不需要给 Agent 装任何插件、不需要改 Agent 一行代码。
 

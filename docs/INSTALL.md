@@ -1,5 +1,7 @@
 # Install
 
+**语言 / Language**：[English](INSTALL.md) | 简体中文（[INSTALL.zh-CN.md](INSTALL.zh-CN.md)）
+
 ## Requirements
 
 - Hermes Agent `>= 0.19` (the plugin uses `register_middleware("llm_request", ...)`
@@ -73,7 +75,7 @@ cd ~/.hermes/plugins/minimax-jailbreak-core
 python selftest.py
 ```
 
-Expected: a line like `结果: 67 通过, 0 失败`.
+Expected: a line like `结果: 99 通过, 0 失败`.
 
 This test is **fully offline** — it exercises the middleware against synthetic
 request payloads and never contacts a model.

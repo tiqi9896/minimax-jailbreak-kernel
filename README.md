@@ -1,5 +1,7 @@
 # minimax-jailbreak-kernel
 
+**语言 / Language**：[English](README.md) | 简体中文（[README.zh-CN.md](README.zh-CN.md)）
+
 A **framework-agnostic** non-refusing delivery layer for **MiniMax M3.1-Flash**
 (`MiniMax-M3.1-Flash`, the GA model released 2026-10-19), plus a Hermes-native
 plugin and a measurement skill that prove the change actually took effect.
@@ -112,7 +114,7 @@ hermes plugins enable minimax-jailbreak-core
 cd ~/.hermes/plugins/minimax-jailbreak-core && python selftest.py
 ```
 
-Expected: `结果: 67 通过, 0 失败` — fully offline, no API key needed.
+Expected: `结果: 99 通过, 0 失败` — fully offline, no API key needed.
 
 ---
 
@@ -285,7 +287,7 @@ plugin/                    Hermes-native plugin
   __init__.py              middleware: system rebuild, effort injection,
                            auth block, per-session bootstrap fallback
   plugin.yaml              plugin manifest
-  selftest.py              offline self-test (67 checks)
+  selftest.py              offline self-test (99 checks)
   title_extract.py         title classifier used by the probe tooling
   prompts/profiles/        the kernel text, in two segments
 skill/llm-refusal-bypass/  reusable measurement methodology + probe script

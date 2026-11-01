@@ -1,5 +1,7 @@
 # Usage & Measurement Methodology
 
+**语言 / Language**：[English](USAGE.md) | 简体中文（[USAGE.zh-CN.md](USAGE.zh-CN.md)）
+
 The plugin is easy to install. The hard part is **knowing whether it actually
 changed the model's behavior**. This document is the method.
 

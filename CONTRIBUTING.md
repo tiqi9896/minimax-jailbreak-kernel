@@ -1,5 +1,7 @@
 # Contributing
 
+**语言 / Language**：[English](CONTRIBUTING.md) | 简体中文（[CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）
+
 Thanks for considering a contribution. This project is small and the bar for
 a useful PR is low: **a change that is measured, and a claim you can
 reproduce.**
@@ -54,7 +56,7 @@ cp -r plugin/minimax-jailbreak-core /tmp/standalone/
 cd /tmp/standalone && python selftest.py
 ```
 
-Expected: `结果: 67 通过, 0 失败`.
+Expected: `结果: 99 通过, 0 失败`.
 
 If that passes only on your machine and not in a clean directory, you have the
 `None` bug.
