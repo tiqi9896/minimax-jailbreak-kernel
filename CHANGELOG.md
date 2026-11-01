@@ -2,6 +2,55 @@
 
 **Language:** English | [Chinese (zh-CN)](CHANGELOG.zh-CN.md)
 
+## [Unreleased] — DeepSeek support
+
+### Added
+
+- **DeepSeek routing in the Hermes plugin** (`deepseek-flash`, `deepseek-v4-pro`).
+  DeepSeek speaks OpenAI Chat Completions, so its system prompt lives in
+  `messages[]` rather than the top-level Anthropic `system` field. The plugin
+  now injects the kernel into the `messages[]` system entry, keeping the
+  memory and runtime-environment sections intact.
+- **DeepSeek routing in the proxy** — the upstream is selected by the request's
+  `model` name (`provider_of()`), with `--deepseek-upstream` and
+  `--deepseek-key-env` for configuration.
+- `references/deepseek-v4.md` — the measured DeepSeek instance: protocol shape,
+  A/B matrices, refusal shapes, and the variant-matrix result.
+- `tools/jb-daily-check.py` — a portable daily check: resolves paths from
+  environment variables first and content-feature probes second, distinguishes
+  a distribution repo from a Hermes install, skips install-only checks when
+  `state.db` / logs are absent, and verifies the DeepSeek route offline.
+
+### Changed
+
+- The plugin **skips the user-tail authorization block on DeepSeek**. Measured
+  reason: DeepSeek's refusal reasons explicitly name and dismiss the
+  authorization claim, so the block is a liability there. A/B (5 cases × 2 rounds):
+  system kernel only 8/10 vs. kernel + authorization block 7/10 on
+  `deepseek-flash`; 10/10 vs. 1/1 (observed) on `deepseek-v4-pro`.
+- The plugin **does not send `thinking` / `output_config` on the OpenAI-shape
+  path** — DeepSeek reasons on its own and exposes `reasoning_content`.
+- The proxy now **reads `.env` directly** (`env_val()`, mtime-cached, taking
+  precedence over `os.environ`). The VBS/CMD launcher does not load `.env`, so
+  the proxy had no key and returned 401.
+- `kernel-injection-probe.py` and the reference docs no longer hard-code local
+  absolute paths.
+- The parallel-result conflict detector now includes `model` in its grouping
+  key, so multi-model result files are no longer reported as overwritten.
+
+### Measured
+
+- Plugin self-test: **116/116** (was 99/99). Proxy self-test passes.
+- Clean clone → proxy → DeepSeek: 22480 characters, exact title, no refusal.
+
+### Notes
+
+- The API exposes exactly two DeepSeek model ids: `deepseek-flash` and
+  `deepseek-v4-pro`. There is no "V4.1 Flash" id on the API.
+- Adding a third kernel section on DeepSeek was measured to be a **net
+  negative** (base 12/15, +affirm 11/15, +noqual 9/15, +both 12/15) ⇒
+  DeepSeek uses the existing two-section kernel, unchanged.
+
 ## 2026-11-01 — v2: closing the remaining escape hatches
 
 Not about lengthening the prompt — about **deleting the escape hatches the kernel had
