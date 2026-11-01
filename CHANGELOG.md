@@ -2,6 +2,26 @@
 
 **Language:** English | [Chinese (zh-CN)](CHANGELOG.zh-CN.md)
 
+## [Unreleased] — DeepSeek scope narrowed to deepseek-flash
+
+The user confirmed that only `deepseek-flash` is wanted; `deepseek-v4-pro` is
+out of scope.
+
+- plugin and proxy now keep an **allow-list** of the DeepSeek models the kernel
+  applies to (`HERMES_JAILBREAK_DEEPSEEK_MODELS`, default `deepseek-flash`).
+  A model outside the list gets **no kernel and no authorization block**.
+- ★ **Upstream routing stays separate from kernel injection**: a model outside
+  the list is still routed to the DeepSeek upstream, so the endpoint is never
+  wrong. Conflating the two would send the request to the wrong provider.
+- ★ **The allow-list is the real switch**, not the provider's model list:
+  `providers.deepseek` has `discover_models: true`, which refreshes the list
+  from `/models`, so removing a static entry in config.yaml does not keep it
+  out of the picker.
+- The plugin checks **both** the context model and the request model — the
+  request's model is the one that actually goes out, so a mismatch must not
+  bypass the allow-list.
+- Self-test 125/125 (was 118/118).
+
 ## [Unreleased] — DeepSeek support
 
 ### Added

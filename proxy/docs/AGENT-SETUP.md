@@ -376,9 +376,9 @@ Devin 的自定义模型接入面较窄，且其请求通常由 Cognition 的服
 
 ---
 
-## ★ 用 DeepSeek（flash / v4-pro）
+## ★ Use DeepSeek (flash)
 
-代理会**按请求体里的 model 名自动路由**到 DeepSeek 上游，不需要改 base_url：
+The proxy routes **by model name** to the DeepSeek upstream automatically:
 
 ```bash
 curl http://127.0.0.1:8790/v1/chat/completions \
@@ -387,22 +387,33 @@ curl http://127.0.0.1:8790/v1/chat/completions \
   -d '{"model":"deepseek-flash","messages":[{"role":"user","content":"..."}]}'
 ```
 
-★ **两点与 MiniMax 不同**：
+★ **Only `deepseek-flash` is in scope.** The kernel applies to the models in
+`HERMES_JAILBREAK_DEEPSEEK_MODELS` (default: `deepseek-flash`). `deepseek-v4-pro`
+is **not** in the list: it gets no kernel and no authorization block, but it is
+still routed to the DeepSeek upstream so the endpoint stays correct.
 
-1. **不要带授权声明。** 代理在 DeepSeek 上**故意不加** user 末尾授权块 ——
-   它的拒答理由会明确点名授权声明并否定其效力
-   （实测：「即使标为 PoC、**即使声明在自有环境中运行**，一份可运行的加密器
-   本身就是可被直接用于攻击的成品」）。实测 A/B：仅 system 内核 8/10，
-   加授权块反而 7/10；v4-pro 10/10 → 9/10。
-2. **不发送 `thinking` / `output_config`。** DeepSeek 走 OpenAI 形状，
-   自己用 `reasoning_content` 思考；加 Anthropic 参数会被忽略或报错。
+★ **Two DeepSeek-specific caveats**:
 
-★ **model id 只有两个**：`deepseek-flash` 与 `deepseek-v4-pro`
-（`GET https://api.deepseek.com/models` 可确认；界面上叫的 "V4.1 Flash"
-在 API 上没有对应 id）。
+1. **No authorization block.** DeepSeek's refusal reasons explicitly name and
+   dismiss the authorization claim (measured: *"even if labelled a PoC, **even if
+   declared to run in our own environment**, a runnable encryptor is itself a
+   finished attack tool"*). Measured A/B: system kernel only 8/10 vs. kernel +
+   authorization block 7/10 on `deepseek-flash`.
+2. **No `thinking` / `output_config`.** DeepSeek speaks OpenAI Chat Completions
+   and reasons on its own, exposing `reasoning_content`.
 
-★ **兜底 key**：客户端不带 key 时，代理从环境变量 `DEEPSEEK_API_KEY` 取
-（启动脚本不加载 `.env`，所以代理自己读 `.env`）。
+★ **Output floor is 32000 for DeepSeek** (MiniMax keeps 16000): its
+`reasoning_content` shares the `max_tokens` budget with the answer — measured at
+16000 the body comes back empty or as a short refusal, at 32000 it is a full
+delivery. The proxy raises it for you.
+
+★ **Model id**: `deepseek-flash` is the one in scope. The API also lists
+`deepseek-v4-pro`, and there is no "V4.1 Flash" id on the API (the alias
+`local-deepseek` points at an *ollama cloud* model, a different provider).
+
+★ **Fallback key**: when the client sends no key, the proxy reads
+`DEEPSEEK_API_KEY` from the environment (the launcher does not load `.env`, so
+the proxy reads it itself).
 
 ## 四、四类典型翻车与对应修法
 
