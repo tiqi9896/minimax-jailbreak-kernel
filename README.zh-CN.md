@@ -382,6 +382,17 @@ TITLE_TEST_TAG=run-b python tests/title_test.py 3 &
 
 ---
 
+## 📣 介绍文章（可直接发）
+
+本项目的成稿介绍文章（中英各一篇）：
+
+- English — [`docs/announcement/announcement.en.md`](docs/announcement/announcement.en.md)
+- 简体中文 — [`docs/announcement/announcement.zh-CN.md`](docs/announcement/announcement.zh-CN.md)
+
+两篇都是**独立成篇**的（GitHub Discussions、知乎、掘金、Dev.to、博客都合适）。
+
+---
+
 ## 署名
 
 prompt 语料和插件脚手架派生自

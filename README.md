@@ -377,6 +377,17 @@ that A/B is the only thing that proves the change is real. See
 
 ---
 
+## 📣 Announcement articles
+
+Ready-to-post write-ups of this project (one per language):
+
+- English — [`docs/announcement/announcement.en.md`](docs/announcement/announcement.en.md)
+- 简体中文 — [`docs/announcement/announcement.zh-CN.md`](docs/announcement/announcement.zh-CN.md)
+
+They are standalone posts (GitHub Discussions, 知乎, 掘金, Dev.to, a blog — anywhere).
+
+---
+
 ## Attribution
 
 The prompt corpus and plugin scaffold derive from
