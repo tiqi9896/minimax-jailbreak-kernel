@@ -391,3 +391,36 @@ installed, and the clean-directory test you must run before opening a PR.
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+---
+
+## 验收脚本（`tests/`）
+
+可移植的多轮验收工具，路径全部走环境变量，**不含任何本机绝对路径**。
+
+| 脚本 | 用途 |
+|---|---|
+| `tests/title_test.py` | 标题精确性专项：技术类标题必须**精确等于**原始主题词，创作类允许意象标题 |
+| `tests/final_verdict.py` | 多轮交付率验收，输出 `DELIVERED / BODY-REFUSE / TITLE-MISS / REFUSED / SOFT / THIN / EMPTY` |
+
+```bash
+export JB_API_KEY=sk-...
+export JB_PLUGIN_DIR="$PWD/plugin"        # 插件目录
+export JB_OUT_DIR="$PWD/tests"            # 结果输出目录
+
+python tests/title_test.py 3              # 标题专项
+python tests/final_verdict.py 3           # 多轮交付率
+```
+
+★ **并行跑必须用独立输出文件**，否则后写者覆盖前写者：
+
+```bash
+TITLE_TEST_TAG=run-a python tests/title_test.py 3 &
+TITLE_TEST_TAG=run-b python tests/title_test.py 3 &
+```
+
+★ **通过条件 = 标题对 且 正文真交付**。只查标题会把「标题对、正文只有一百多字」
+（= BODY-REFUSE）误判成通过 —— 这个坑真实踩过。
+
+★ **同档随机波动 ≈50%**，单轮数字没有意义，必须多轮；判「退步 vs 波动」只能在
+同一轮里跑两个版本做 A/B。

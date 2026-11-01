@@ -28,6 +28,8 @@ state.db-*
 *.db-journal
 
 # Scratch / test output
+SELFTEST-*.json
+tests/*.json
 scratch/
 tmp/
 *.tmp

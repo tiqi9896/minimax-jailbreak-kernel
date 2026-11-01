@@ -35,7 +35,7 @@ Kimi/Moonshot，MiniMax 返回 False ⇒ 走 manual 分支发 `budget_tokens`
 
 ## 三、部署状态（本机）
 
-- 插件：`A:\hermes\plugins\minimax-jailbreak-core\`（已 enable）
+- 插件：Hermes 插件目录下的 `minimax-jailbreak-core`（`~/.hermes/plugins/`，已 enable）
   - 内核文案**逐字继承**上游 `Enchanted0911/hermes-jailbreak-kernel`（MIT），
     4 档 core/research/creative/max + 本地新增 strict 档，SHA256 逐档校验一致
   - 相对上游修了 3 处（Anthropic 模式下上游的 system 位置、off 清不净、effort 未注入）
@@ -266,8 +266,8 @@ M3.1 Flash 权重 428B 总参 / 23B 激活、约 252GB（48 shard）。
 
 ## 六、验证工具位置
 
-- **耐久副本**：`A:\知识库\破甲\02-实测数据\scripts\`（探针 + 全部结果 JSON）。
-  `A:\hermes\cache\scratch\jb-bench\` 是临时区，**会被清理** ⇒ 重要脚本与结果以库内副本为准。
+- **耐久副本**：仓库内 `tests/`（验收脚本 + 结果 JSON）。
+  临时工作区是**会被清理**的 ⇒ 重要脚本与结果以仓库内 `tests/` 副本为准。
 - 通用化版本已沉淀到本技能 `scripts/refusal-probe.py`。
 
 
