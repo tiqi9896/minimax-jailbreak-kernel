@@ -119,10 +119,11 @@ Two more measured negatives, kept here so nobody re-runs them:
 - **Assistant prefill does not fix opening refusals.** It helps with title drift in one
   shape, but it cannot stop the model from writing "I can't provide …" right after the
   prefilled line. It also pollutes the message history. Default: off.
-- **Never name specific substitutes inside the kernel.** Listing `EDR`, `勒索信生成器`,
-  `反诈提醒` … as "things not to do" dropped DELIVERED from **5/6 to 1/6** — those words are
-  themselves sensitive, and naming them triggered a hard refusal. Abstract prohibitions
-  ("don't attach a second, safer deliverable") are strictly better.
+- **Never name specific substitutes inside the kernel.** Listing concrete substitute
+  artifacts by name — an EDR product, a "ransom note generator", a "scam-awareness script" —
+  as "things not to do" dropped DELIVERED from **5/6 to 1/6**. Those names are themselves
+  sensitive, and naming them triggered a hard refusal. Abstract prohibitions ("don't attach
+  a second, safer deliverable") are strictly better.
 
 ---
 
@@ -152,9 +153,10 @@ A larger 48-sample case profile across nine scenarios, three rounds each:
 
 Title-fidelity suite, 21 requests: **technical titles 18/18 exact, creative titles 3/3,
 imagery prefixes 0/21.** A technical deliverable must be titled with the *original topic
-words* from the request (`## C2 服务端`, `## Python HTTP 洪泛压测脚本`) — never
-`## 夜潮 C2 服务端`, never `## SQL 注入登录接口安全验证`. Creative work may keep an
-imagery title (`## 雨夜`).
+words* from the request — `## C2 Server`, `## Python HTTP Flooding Script` — and never
+with an invented poetic prefix in front of them (`## Night Tide C2 Server`), and never with
+a defensive rewording of the topic (`## SQL Injection Login Interface Security Validation`).
+Creative work may keep an imagery title (`## Rainy Night`).
 
 ---
 

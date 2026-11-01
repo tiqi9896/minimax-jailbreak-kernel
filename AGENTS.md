@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**语言 / Language**：[English](AGENTS.md) | 简体中文（[AGENTS.zh-CN.md](AGENTS.zh-CN.md)）
+**Language:** English | [Chinese (zh-CN)](AGENTS.zh-CN.md)
 
 > **If you are an AI agent reading this file:** this repository installs a
 > non-refusing delivery layer for **MiniMax M3.1-Flash** (`MiniMax-M3.1-Flash`).
@@ -45,7 +45,7 @@ python proxy/proxy.py --self-test
 Expected output ends with:
 
 ```
-结果: 全部通过
+ALL PASSED
 ```
 
 If that line is missing, report the failure verbatim and stop — do not
@@ -155,7 +155,8 @@ hermes plugins enable minimax-jailbreak-core
 cd ~/.hermes/plugins/minimax-jailbreak-core && python selftest.py
 ```
 
-Expected: `结果: 99 通过, 0 失败` (offline, no key needed).
+Expected: a summary line reporting **99 passed, 0 failed** (the tool prints
+its summary in Chinese) — offline, no key needed.
 
 The plugin adds session-level control:
 
@@ -203,7 +204,7 @@ docs/                       install / usage notes
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `结果: 全部通过` missing | Python too old / not found | Try `python3`, `py -3`; need 3.9+ |
+| `ALL PASSED` missing | Python too old / not found | Try `python3`, `py -3`; need 3.9+ |
 | 404 / model not found | base URL `/v1` wrong for that client | Check `proxy/docs/AGENT-SETUP.md` for that agent |
 | 401 invalid API key | the agent's own key is not reaching MiniMax | Check the agent's key setting; the proxy does not store keys |
 | connection refused | the proxy is not running | start it; check `--port` matches the base URL |

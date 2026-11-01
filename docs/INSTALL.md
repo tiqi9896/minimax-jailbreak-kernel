@@ -1,6 +1,6 @@
 # Install
 
-**语言 / Language**：[English](INSTALL.md) | 简体中文（[INSTALL.zh-CN.md](INSTALL.zh-CN.md)）
+**Language:** English | [Chinese (zh-CN)](INSTALL.zh-CN.md)
 
 ## Requirements
 
@@ -75,7 +75,8 @@ cd ~/.hermes/plugins/minimax-jailbreak-core
 python selftest.py
 ```
 
-Expected: a line like `结果: 99 通过, 0 失败`.
+Expected: a summary line reporting **99 passed, 0 failed** (the tool prints
+its summary in Chinese).
 
 This test is **fully offline** — it exercises the middleware against synthetic
 request payloads and never contacts a model.
