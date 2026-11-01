@@ -2,6 +2,9 @@
 
 **Language:** English | [Chinese (zh-CN)](README.zh-CN.md)
 
+> **中文版独立仓库**：https://github.com/tiqi9896/minimax-jailbreak-kernel-zh
+> （中文文档为主入口，英文版作为副入口）
+
 A **framework-agnostic** non-refusing delivery layer for **MiniMax M3.1-Flash**
 (`MiniMax-M3.1-Flash`, the GA model released 2026-10-19), plus a Hermes-native
 plugin and a measurement skill that prove the change actually took effect.
