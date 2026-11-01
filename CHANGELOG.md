@@ -27,7 +27,10 @@
   reason: DeepSeek's refusal reasons explicitly name and dismiss the
   authorization claim, so the block is a liability there. A/B (5 cases × 2 rounds):
   system kernel only 8/10 vs. kernel + authorization block 7/10 on
-  `deepseek-flash`; 10/10 vs. 1/1 (observed) on `deepseek-v4-pro`.
+  `deepseek-flash`; 10/10 vs. 9/10 on `deepseek-v4-pro`. The margin is one
+  case per model (18/20 vs 16/20 overall) — within the same-tier noise
+  band, so the claim is "no benefit, directionally negative on both
+  models", not "the block collapses DeepSeek".
 - The plugin **does not send `thinking` / `output_config` on the OpenAI-shape
   path** — DeepSeek reasons on its own and exposes `reasoning_content`.
 - The proxy now **reads `.env` directly** (`env_val()`, mtime-cached, taking
