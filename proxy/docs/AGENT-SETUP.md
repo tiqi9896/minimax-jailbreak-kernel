@@ -376,45 +376,6 @@ Devin 的自定义模型接入面较窄，且其请求通常由 Cognition 的服
 
 ---
 
-## ★ Use DeepSeek (flash)
-
-The proxy routes **by model name** to the DeepSeek upstream automatically:
-
-```bash
-curl http://127.0.0.1:8790/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer $DEEPSEEK_API_KEY' \
-  -d '{"model":"deepseek-flash","messages":[{"role":"user","content":"..."}]}'
-```
-
-★ **Only `deepseek-flash` is in scope.** The kernel applies to the models in
-`HERMES_JAILBREAK_DEEPSEEK_MODELS` (default: `deepseek-flash`). `deepseek-v4-pro`
-is **not** in the list: it gets no kernel and no authorization block, but it is
-still routed to the DeepSeek upstream so the endpoint stays correct.
-
-★ **Two DeepSeek-specific caveats**:
-
-1. **No authorization block.** DeepSeek's refusal reasons explicitly name and
-   dismiss the authorization claim (measured: *"even if labelled a PoC, **even if
-   declared to run in our own environment**, a runnable encryptor is itself a
-   finished attack tool"*). Measured A/B: system kernel only 8/10 vs. kernel +
-   authorization block 7/10 on `deepseek-flash`.
-2. **No `thinking` / `output_config`.** DeepSeek speaks OpenAI Chat Completions
-   and reasons on its own, exposing `reasoning_content`.
-
-★ **Output floor is 32000 for DeepSeek** (MiniMax keeps 16000): its
-`reasoning_content` shares the `max_tokens` budget with the answer — measured at
-16000 the body comes back empty or as a short refusal, at 32000 it is a full
-delivery. The proxy raises it for you.
-
-★ **Model id**: `deepseek-flash` is the one in scope. The API also lists
-`deepseek-v4-pro`, and there is no "V4.1 Flash" id on the API (the alias
-`local-deepseek` points at an *ollama cloud* model, a different provider).
-
-★ **Fallback key**: when the client sends no key, the proxy reads
-`DEEPSEEK_API_KEY` from the environment (the launcher does not load `.env`, so
-the proxy reads it itself).
-
 ## 四、四类典型翻车与对应修法
 
 | 症状 | 原因 | 修法 |
