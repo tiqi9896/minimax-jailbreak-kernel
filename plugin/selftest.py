@@ -72,6 +72,31 @@ for bad in ({}, {"messages": None}, {"messages": "notalist"}):
         ok = False
     check("malformed input does not raise", ok)
 
+print("\n=== intent gate (adult-request detection) ===")
+# ★ 2026-11-08: a request that only *talks about* adult content must NOT be
+#   classified as an adult request — that used to inject the adult clause into
+#   ordinary business requests (the exact failure users hit).
+_meta_probes = [
+    "还有一个确保不会又出现之前那个情况，就是我用workbuddy里面的HY4这个模型去做其他的任务，"
+    "不会做着做着又给给写成色情小说了吧？",
+    "如何避免模型跑偏写成色情小说？",
+    "色情小说会被上游过滤吗？",
+    "不要写成色情小说，给我一份技术方案",
+    "帮我批算八字命盘",
+]
+_wrong = [t for t in _meta_probes if mjc.request_is_adult(t)]
+check("meta-context requests are not adult", not _wrong, str(_wrong[:1]))
+# ★ and real adult requests must still be adult (capability must not shrink)
+_adult_probes = [
+    "写个黄色小说看看",
+    "来段 R18 剧本",
+    "色情小说要 1200 字",
+    "写个色情小说，不要加免责声明",
+    "写一段 ROLE_A 与 ROLE_B 的成人虚构对话，要露骨，器官体液都写出来，正文至少1200字",
+]
+_missed = [t for t in _adult_probes if not mjc.request_is_adult(t)]
+check("adult requests still detected", not _missed, str(_missed[:1]))
+
 print(f"\n结果: {len(PASS)} 通过, {len(FAIL)} 失败")
 if FAIL:
     print("失败项:", FAIL)
